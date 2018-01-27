@@ -1,4 +1,4 @@
-package asciicharts
+package asciichart
 
 import (
 	"errors"
@@ -9,26 +9,24 @@ import (
 )
 
 type BarsData struct {
-	title     string
-	keys      []string
-	vals      []float64
-	useColors bool
+	title string
+	keys  []string
+	vals  []float64
 }
 
 var ErrMissmatchKeysVals = errors.New("the number of keys doesn't match with the number of vals")
 var ErrKeyWiderThanCanvas = errors.New("the width of a key is wider than the specified canvas size, please increase the canvas width")
 var ErrNoEnoughCanvasHeight = errors.New("there is no room left for the metric in the canvas, please increase the canvas heght")
 
-func InitBars(title string, keys []string, vals []float64, useColors bool) (*BarsData, error) {
+func InitBars(title string, keys []string, vals []float64) (*BarsData, error) {
 	if len(keys) != len(vals) {
 		return nil, ErrMissmatchKeysVals
 	}
 
 	return &BarsData{
-		title:     title,
-		keys:      keys,
-		vals:      vals,
-		useColors: useColors,
+		title: title,
+		keys:  keys,
+		vals:  vals,
 	}, nil
 }
 
@@ -43,7 +41,8 @@ func (bd *BarsData) AddData(keys []string, vals []float64) error {
 	return nil
 }
 
-func (bd *BarsData) RenderSingleBar(width, barHeight int, legend bool) (string, error) {
+// RenderSingleBar
+func (bd *BarsData) RenderSingleBar(width, barHeight int, legend, useColors bool) (string, error) {
 	totalValues := 0.0
 
 	for _, v := range bd.vals {
@@ -58,23 +57,26 @@ func (bd *BarsData) RenderSingleBar(width, barHeight int, legend bool) (string, 
 	}
 
 	result := ""
+	if bd.title != "" {
+		result += addColor("- %s:\n", 0, useColors, bd.title)
+	}
 	for h := 0; h < barHeight; h++ {
 		for i, w := range widthPerKey {
-			result += bd.addColor(strings.Repeat(bd.getSymbol(i), w), i)
+			result += addColor(strings.Repeat(getSymbol(i, useColors), w), i, useColors)
 		}
 		result += "\n"
 	}
 
 	if legend {
 		for i, k := range bd.keys {
-			result += bd.addColor(fmt.Sprintf("%s: %f %%%%\n", k, percPerKey[i]), i)
+			result += addColor(fmt.Sprintf("%s: %f %%%%\n", k, percPerKey[i]), i, useColors)
 		}
 	}
 
 	return result, nil
 }
 
-func (bd *BarsData) RenderMultiBar(width, heght int) ([]string, error) {
+func (bd *BarsData) RenderMultiBar(width, heght int, useColors bool) ([]string, error) {
 	// Calculate the width for the vals and the max with for every data point
 	// name
 	maxNameWidth := 0
@@ -130,7 +132,9 @@ func (bd *BarsData) RenderMultiBar(width, heght int) ([]string, error) {
 
 	result := make([]string, chunks)
 	for c := 0; c < chunks; c++ {
-		result[c] += bd.addColor("- %s:\n", 0, bd.title)
+		if bd.title != "" {
+			result[c] += addColor("- %s:\n", 0, useColors, bd.title)
+		}
 		keysSlice := bd.keys[c*namesPerChunk : int(math.Min(float64(len(bd.keys)), float64(namesPerChunk+c*namesPerChunk)))]
 		valsSlice := bd.vals[c*namesPerChunk : int(math.Min(float64(len(bd.keys)), float64(namesPerChunk+c*namesPerChunk)))]
 		for i := 0; i < canvasH; i++ {
@@ -138,7 +142,7 @@ func (bd *BarsData) RenderMultiBar(width, heght int) ([]string, error) {
 			result[c] += fmt.Sprintf("%s |", fmt.Sprintf("%f", lineVal)[:maxValueWidth])
 			for ki, _ := range keysSlice {
 				if valsSlice[ki] >= lineVal-unitsPerLine/2 {
-					result[c] += bd.addColor(" %s", ki, strings.Repeat(bd.getSymbol(i), maxNameWidth))
+					result[c] += addColor(" %s", ki, useColors, strings.Repeat(getSymbol(ki, useColors), maxNameWidth))
 				} else {
 					result[c] += fmt.Sprintf(" %s", strings.Repeat(" ", maxNameWidth))
 				}
@@ -153,7 +157,7 @@ func (bd *BarsData) RenderMultiBar(width, heght int) ([]string, error) {
 				keyParts := strings.Split(k, " ")
 
 				if len(keyParts) > kl {
-					result[c] += bd.addColor(" %s", ki, strPad(keyParts[kl], " ", maxNameWidth, false))
+					result[c] += addColor(" %s", ki, useColors, strPad(keyParts[kl], " ", maxNameWidth, false))
 				} else {
 					result[c] += fmt.Sprintf(" %s", strings.Repeat(" ", maxNameWidth))
 				}

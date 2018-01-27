@@ -1,4 +1,4 @@
-package asciicharts
+package asciichart
 
 import (
 	"fmt"
@@ -23,15 +23,15 @@ var colorsPalette = []func(format string, a ...interface{}) string{
 	color.CyanString,
 }
 
-func (bd *BarsData) getSymbol(index int) string {
-	if bd.useColors {
+func getSymbol(index int, useColors bool) string {
+	if useColors {
 		return "#"
 	}
 	return symbolsPalette[index%len(symbolsPalette)]
 }
 
-func (bd *BarsData) addColor(format string, index int, a ...interface{}) string {
-	if bd.useColors {
+func addColor(format string, index int, useColors bool, a ...interface{}) string {
+	if useColors {
 		return colorsPalette[index%len(colorsPalette)](format, a...)
 	}
 
